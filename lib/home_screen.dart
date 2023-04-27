@@ -123,7 +123,8 @@ class _HomeScreenState extends State<HomeScreen> {
         // vibration
         bool? hadVibrator = await Vibration.hasVibrator();
         if (hadVibrator!) {
-          Vibration.vibrate();
+          Vibration.vibrate(
+              pattern: [500, 1000, 500, 2000], intensities: [1, 255]);
         }
         totalSeconds = selectedMinute * 60;
         isBreak = false;
@@ -141,7 +142,8 @@ class _HomeScreenState extends State<HomeScreen> {
           // vibration
           bool? hadVibrator = await Vibration.hasVibrator();
           if (hadVibrator!) {
-            Vibration.vibrate();
+            Vibration.vibrate(
+                pattern: [500, 1000, 500, 2000], intensities: [1, 255]);
           }
           isBreak = true;
           totalSeconds = breakTime;

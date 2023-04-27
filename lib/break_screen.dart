@@ -5,9 +5,9 @@ class BreakScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).backgroundColor,
-      body: const Center(
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
         child: Text(
           'Break Time!',
           style: TextStyle(
