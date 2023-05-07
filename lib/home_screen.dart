@@ -23,8 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isBreak = false;
   int totalRound = 4;
   int round = 0;
-  int totalGoal = 12;
-  int goal = 0;
   double itemExtent = 60;
   late int selectedMinute = 15;
   int totalSeconds = 15 * 60;
@@ -34,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? currentBackPressTime;
 
   final TextEditingController roundTextController = TextEditingController();
-  final TextEditingController goalTextController = TextEditingController();
   final TextEditingController btTextController = TextEditingController();
   final FixedExtentScrollController listWheelController =
       FixedExtentScrollController();
@@ -82,12 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future initPrefs() async {
     prefs = await SharedPreferences.getInstance();
     final prefTotalRound = prefs.getInt('totalRound');
-    final prefTotalGoal = prefs.getInt('totalGoal');
     final prefBreakTime = prefs.getInt('breakTime');
     final prefSelectedIndex = prefs.getInt('selectedIndex');
 
     totalRound = prefTotalRound ?? totalRound;
-    totalGoal = prefTotalGoal ?? totalGoal;
     breakTime = prefBreakTime ?? breakTime;
     selectedIndex = prefSelectedIndex ?? selectedIndex;
     totalSeconds = times[selectedIndex] * 60;
@@ -95,14 +90,10 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: const Duration(seconds: 3), curve: Curves.linear);
     listWheelController.jumpToItem(selectedIndex);
     roundTextController.text = totalRound.toString();
-    goalTextController.text = totalGoal.toString();
     btTextController.text = ((breakTime - 3) ~/ 60).toString();
 
     if (prefTotalRound == null) {
       await prefs.setInt('totalRound', totalRound);
-    }
-    if (prefTotalGoal == null) {
-      await prefs.setInt('totalGoal', totalGoal);
     }
     if (prefBreakTime == null) {
       await prefs.setInt('breakTime', breakTime);
@@ -116,50 +107,39 @@ class _HomeScreenState extends State<HomeScreen> {
     return MobileAds.instance.initialize();
   }
 
+  void vibration() async {
+    bool? hadVibrator = await Vibration.hasVibrator();
+    if (hadVibrator!) {
+      Vibration.vibrate(pattern: [500, 1000, 500, 2000], duration: 1000);
+    }
+  }
+
   void onTick(Timer timer) async {
     // finished round
     if (totalSeconds == 0) {
+      // Break Time End
       if (isBreak) {
-        // vibration
-        bool? hadVibrator = await Vibration.hasVibrator();
-        if (hadVibrator!) {
-          Vibration.vibrate(
-              pattern: [500, 1000, 500, 2000], intensities: [1, 255]);
-        }
-        totalSeconds = selectedMinute * 60;
         isBreak = false;
-      } else {
-        totalSeconds = selectedMinute * 60;
-        if (round + 1 == totalRound) {
-          goal++;
+        vibration();
+        totalSeconds = selectedMinute * 60; // time reset
+      }
+      // Working Time End
+      else {
+        isBreak = true;
+        round++;
+        vibration();
+        totalSeconds = breakTime;
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) {
+                return const BreakScreen();
+              },
+            ),
+          );
         }
-        round = (round + 1) % totalRound;
-        if (goal == totalGoal) {
-          timer.cancel();
-          round = 0;
-          goal = 0;
-        } else {
-          // vibration
-          bool? hadVibrator = await Vibration.hasVibrator();
-          if (hadVibrator!) {
-            Vibration.vibrate(
-                pattern: [500, 1000, 500, 2000], intensities: [1, 255]);
-          }
-          isBreak = true;
-          totalSeconds = breakTime;
-          // _loadInterstitialAd();
-          if (mounted) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) {
-                  return const BreakScreen();
-                },
-              ),
-            );
-          }
-          await Future.delayed(const Duration(seconds: 3));
-          if (mounted) Navigator.of(context).pop();
-        }
+        await Future.delayed(const Duration(seconds: 3));
+        if (mounted) Navigator.of(context).pop();
       }
       setState(() {});
     }
@@ -278,12 +258,6 @@ class _HomeScreenState extends State<HomeScreen> {
             }
             if (isBreak) {
               isBreak = false;
-              if (round > 0) {
-                round--;
-              } else {
-                goal--;
-                round = totalRound - 1;
-              }
             }
             setState(() {});
           },
@@ -304,6 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   context: context,
                   builder: (context) {
                     return AlertDialog(
+                      actionsPadding: EdgeInsets.zero,
                       title: const Text(
                         'Settings',
                         textAlign: TextAlign.center,
@@ -315,6 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
                                   height:
@@ -322,16 +298,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   alignment: Alignment.center,
                                   child: Text(
                                     'TOTAL ROUND',
-                                    style: settingTextStyle,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Container(
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.07,
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    'TOTAL GOAL',
                                     style: settingTextStyle,
                                     textAlign: TextAlign.center,
                                   ),
@@ -349,6 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ],
                             ),
                             Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
                                   height:
@@ -358,18 +325,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: TextFormField(
                                     textAlign: TextAlign.center,
                                     controller: roundTextController,
-                                    style: settingTextStyle,
-                                    decoration: settingTextField,
-                                  ),
-                                ),
-                                Container(
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.07,
-                                  width: MediaQuery.of(context).size.width / 5,
-                                  alignment: Alignment.center,
-                                  child: TextFormField(
-                                    textAlign: TextAlign.center,
-                                    controller: goalTextController,
                                     style: settingTextStyle,
                                     decoration: settingTextField,
                                   ),
@@ -395,11 +350,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         TextButton(
                           onPressed: () async {
                             totalRound = int.parse(roundTextController.text);
-                            totalGoal = int.parse(goalTextController.text);
                             breakTime =
                                 int.parse(btTextController.text) * 60 + 3;
                             await prefs.setInt('totalRound', totalRound);
-                            await prefs.setInt('totalGoal', totalGoal);
                             await prefs.setInt('breakTime', breakTime);
                             if (mounted) Navigator.pop(context, 'OK');
                           },
@@ -718,24 +671,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     Text(
                       'ROUND',
-                      style: bottomTextStyle,
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width / 5,
-                ),
-                Column(
-                  children: [
-                    Text(
-                      '$goal/$totalGoal',
-                      style: topTextStyle,
-                    ),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height / 100,
-                    ),
-                    Text(
-                      'GOAL',
                       style: bottomTextStyle,
                     ),
                   ],
