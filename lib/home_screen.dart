@@ -18,7 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int breakTime = 5 * 60 + 3;
-  final List<int> times = [15, 20, 25, 30, 35];
+  final List<int> times = [1, 15, 20, 25, 30, 35];
   bool isRunning = false;
   bool isBreak = false;
   int totalRound = 4;
@@ -107,10 +107,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return MobileAds.instance.initialize();
   }
 
-  void vibration() async {
+  void vibration(List<int> pattern) async {
     bool? hadVibrator = await Vibration.hasVibrator();
     if (hadVibrator!) {
-      Vibration.vibrate(pattern: [500, 1000, 500, 2000], duration: 1000);
+      Vibration.vibrate(pattern: pattern, duration: 1000);
     }
   }
 
@@ -120,36 +120,46 @@ class _HomeScreenState extends State<HomeScreen> {
       // Break Time End
       if (isBreak) {
         isBreak = false;
-        vibration();
+        vibration([500, 1000, 500, 2000]);
         totalSeconds = selectedMinute * 60; // time reset
       }
       // Working Time End
       else {
         isBreak = true;
         round++;
-        vibration();
-        totalSeconds = breakTime;
-        if (mounted) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) {
-                return const BreakScreen();
-              },
-            ),
-          );
+        if (round == totalRound) {
+          vibration([500, 1000, 500, 1000, 500, 1000]);
+          round = 0;
+          onPausePressed();
+          isBreak = false;
+          totalSeconds = times[selectedIndex] * 60;
+        } else {
+          vibration([500, 1000, 500, 2000]);
+          totalSeconds = breakTime;
+          if (mounted) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) {
+                  return const BreakScreen();
+                },
+              ),
+            );
+          }
+          await Future.delayed(const Duration(seconds: 3));
+          if (mounted) Navigator.of(context).pop();
         }
-        await Future.delayed(const Duration(seconds: 3));
-        if (mounted) Navigator.of(context).pop();
       }
       setState(() {});
     }
     // tick! tock!
     else {
-      setState(() {
-        totalSeconds = totalSeconds - 1;
-        FlutterBackgroundService()
-            .invoke('sendTime', {'currentTime': totalSeconds});
-      });
+      if (isRunning) {
+        setState(() {
+          totalSeconds = totalSeconds - 1;
+          FlutterBackgroundService()
+              .invoke('sendTime', {'currentTime': totalSeconds});
+        });
+      }
     }
   }
 
