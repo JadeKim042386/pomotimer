@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pomotimer/apis/localstorage_variable_api.dart';
+import 'package:pomotimer/apis/models/custom_time_model.dart';
 import 'package:pomotimer/blocs/ticker.dart';
 import 'package:pomotimer/blocs/time_bloc.dart';
 import 'package:pomotimer/screens/home_screen.dart';
@@ -169,13 +170,48 @@ class PomoTimerView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<TimerBloc>.value(
-      value: TimerBloc(ticker: const Ticker(), prefs: prefs),
-      child: const MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'POMOTIMER',
-        home: HomeScreen(),
-      ),
-    );
+    Future<int> getInitDuration() async {
+      final int settingType = prefs.getInt('settingType')!;
+      if (settingType == 0) {
+        return Future.value(
+            TimerBloc.times[prefs.getInt('selectedIndex')!] * 60);
+      } else if (settingType == 1) {
+        final int totalRound = prefs.getInt('totalRound')!;
+        final int breakTime = (prefs.getInt('breakTime')! - 3) ~/ 60;
+        final int totalWorkingTime = prefs.getInt('totalWorkingTime')!;
+        final int intervalTime =
+            (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
+        return Future.value(intervalTime * 60);
+      } else if (settingType == 2) {
+        final List<CustomTimeModel> customTimeModels =
+            context.read<VariableRepository>().getCustomTimeModels();
+        return customTimeModels.isNotEmpty
+            ? customTimeModels[0].workingTime * 60
+            : 0;
+      }
+      return 0;
+    }
+
+    return FutureBuilder(
+        future: getInitDuration(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return BlocProvider<TimerBloc>.value(
+              value: TimerBloc(
+                ticker: const Ticker(),
+                prefs: prefs,
+                initDuration: snapshot.data!,
+              ),
+              child: const MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'POMOTIMER',
+                home: HomeScreen(),
+              ),
+            );
+          }
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        });
   }
 }

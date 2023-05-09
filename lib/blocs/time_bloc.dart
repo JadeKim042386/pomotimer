@@ -12,9 +12,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   TimerBloc({
     required Ticker ticker,
     required this.prefs,
+    required this.initDuration,
   })  : _ticker = ticker,
-        super(TimerInitial(
-            times[prefs.getInt('selectedIndex') ?? 0] * 60, false)) {
+        super(TimerInitial(initDuration, false)) {
     on<TimerStarted>(_onStarted);
     on<TimerPaused>(_onPaused);
     on<TimerResumed>(_onResumed);
@@ -22,9 +22,10 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     on<TimerTicked>(_onTicked);
   }
 
-  static const List<int> times = [1, 15, 20, 25, 30, 35];
+  static const List<int> times = [15, 20, 25, 30, 35];
   final Ticker _ticker;
   final SharedPreferences prefs;
+  final int initDuration;
   final service = FlutterBackgroundService();
 
   StreamSubscription<int>? _tickerSubscription;

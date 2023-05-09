@@ -1,3 +1,4 @@
+import 'package:pomotimer/apis/models/custom_time_model.dart';
 import 'package:pomotimer/apis/variable_api.dart';
 
 class VariableRepository {
@@ -14,4 +15,15 @@ class VariableRepository {
   bool checkKey(String key) => _variableApi.checkKey(key);
 
   Future<void> removeData(String key) => _variableApi.removeData(key);
+
+  String getString(String key) => _variableApi.getString(key);
+  Future<void> setString(String key, String value) =>
+      _variableApi.setString(key, value);
+
+  List<CustomTimeModel> getCustomTimeModels() =>
+      _variableApi.getCustomTimeModels();
+  Future<void> setCustomTimeModels(CustomTimeModel customTimeModel) =>
+      _variableApi.setCustomTimeModels(customTimeModel);
+  Future<void> deleteCustomTimeModel(String id) =>
+      _variableApi.deleteCustomTimeModel(id);
 }
