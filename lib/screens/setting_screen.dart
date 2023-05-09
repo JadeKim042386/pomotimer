@@ -111,11 +111,13 @@ class _SettingScreenState extends State<SettingScreen> {
                       actions: [
                         TextButton(
                           onPressed: () async {
-                            await context
-                                .read<VariableRepository>()
-                                .setCustomTimeModels(CustomTimeModel(
-                                    breakTime: breakTime.value,
-                                    workingTime: workingTime.value));
+                            if (breakTime.value > 0 || workingTime.value > 0) {
+                              await context
+                                  .read<VariableRepository>()
+                                  .setCustomTimeModels(CustomTimeModel(
+                                      breakTime: breakTime.value,
+                                      workingTime: workingTime.value));
+                            }
                             if (mounted) Navigator.of(context).pop();
                             setState(() {});
                           },
@@ -266,8 +268,9 @@ class _SettingScreenState extends State<SettingScreen> {
                   // Custom Data
                   Visibility(
                     visible: toggleIndex.value == 2,
-                    child: SingleChildScrollView(
-                      child: Column(
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.6,
+                      child: ListView(
                         children: context
                             .read<VariableRepository>()
                             .getCustomTimeModels()
