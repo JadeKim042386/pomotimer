@@ -4,9 +4,15 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pomotimer/home_screen.dart';
+import 'package:pomotimer/apis/localstorage_variable_api.dart';
+import 'package:pomotimer/blocs/ticker.dart';
+import 'package:pomotimer/blocs/time_bloc.dart';
+import 'package:pomotimer/screens/home_screen.dart';
+import 'package:pomotimer/repositories/variable_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,19 +22,14 @@ void main() async {
     }
   });
   await initializeService();
-  runApp(const PomoTimer());
-}
-
-class PomoTimer extends StatelessWidget {
-  const PomoTimer({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'POMOTIMER',
-      home: HomeScreen(),
-    );
-  }
+  final prefs = await SharedPreferences.getInstance();
+  final variableApi =
+      LocalStorageVariableApi(plugin: await SharedPreferences.getInstance());
+  final variableRepository = VariableRepository(variableApi: variableApi);
+  runApp(PomoTimer(
+    prefs: prefs,
+    variableRepository: variableRepository,
+  ));
 }
 
 Future<void> initializeService() async {
@@ -137,4 +138,44 @@ void onStart(ServiceInstance service) async {
       }
     }
   });
+}
+
+class PomoTimer extends StatelessWidget {
+  const PomoTimer({
+    super.key,
+    required this.prefs,
+    required this.variableRepository,
+  });
+
+  final SharedPreferences prefs;
+  final VariableRepository variableRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    return RepositoryProvider.value(
+        value: variableRepository,
+        child: PomoTimerView(
+          prefs: prefs,
+        ));
+  }
+}
+
+class PomoTimerView extends StatelessWidget {
+  const PomoTimerView({
+    super.key,
+    required this.prefs,
+  });
+  final SharedPreferences prefs;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider<TimerBloc>.value(
+      value: TimerBloc(ticker: const Ticker(), prefs: prefs),
+      child: const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'POMOTIMER',
+        home: HomeScreen(),
+      ),
+    );
+  }
 }

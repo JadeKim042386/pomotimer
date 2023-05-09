@@ -43,6 +43,8 @@ dependencies:
   flutter_background_service: ^2.4.6
   flutter_background_service_android: ^3.0.3
   permission_handler: ^10.2.0
+  equatable: ^2.0.5
+  flutter_bloc: ^8.1.1
 
 dev_dependencies:
   flutter_test:
