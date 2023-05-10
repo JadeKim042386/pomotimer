@@ -134,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final int totalWorkingTime = getFromRepo('totalWorkingTime');
         final int intervalTime =
             (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
-        return intervalTime * 60;
+        return intervalTime < 0 ? 0 : intervalTime * 60;
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();

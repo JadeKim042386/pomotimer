@@ -372,6 +372,17 @@ class _SettingScreenState extends State<SettingScreen> {
   }
 
   SliderTheme settingSlider(double max, String key) {
+    double getMinValue(String key) {
+      if (key == 'totalWorkingTime') {
+        final int breakTime =
+            (context.read<VariableRepository>().getInt('breakTime') - 3) ~/ 60;
+        final int totalRound =
+            context.read<VariableRepository>().getInt('totalRound');
+        return (breakTime * totalRound).toDouble();
+      }
+      return 0.0;
+    }
+
     double getValue(key) {
       switch (key) {
         case 'breakTime':
@@ -381,7 +392,10 @@ class _SettingScreenState extends State<SettingScreen> {
           }
         case 'totalWorkingTime':
           {
-            return context.read<VariableRepository>().getInt(key).toDouble();
+            final double totalWorkingTime =
+                context.read<VariableRepository>().getInt(key).toDouble();
+            final double minValue = getMinValue(key);
+            return totalWorkingTime < minValue ? minValue : totalWorkingTime;
           }
         case 'totalRound':
           {
@@ -399,12 +413,15 @@ class _SettingScreenState extends State<SettingScreen> {
         case 'breakTime':
           {
             return timeToString(
-                ((context.read<VariableRepository>().getInt(key) - 3) ~/ 60));
+                (context.read<VariableRepository>().getInt(key) - 3) ~/ 60);
           }
         case 'totalWorkingTime':
           {
-            final int minTime = context.read<VariableRepository>().getInt(key);
-            return timeToString(minTime);
+            final int totalWorkingTime =
+                context.read<VariableRepository>().getInt(key);
+            final int minValue = getMinValue(key).toInt();
+            return timeToString(
+                totalWorkingTime < minValue ? minValue : totalWorkingTime);
           }
         case 'totalRound':
           {
@@ -443,8 +460,11 @@ class _SettingScreenState extends State<SettingScreen> {
         tickMarkShape: SliderTickMarkShape.noTickMark,
       ),
       child: Slider(
+        min: getMinValue(key),
         max: max,
-        divisions: key == 'totalWorkingTime' ? max.toInt() ~/ 5 : max.toInt(),
+        divisions: key == 'totalWorkingTime'
+            ? (max.toInt() - getMinValue(key)) ~/ 5
+            : max.toInt(),
         activeColor: Colors.black,
         inactiveColor: Colors.grey,
         thumbColor: Colors.black,

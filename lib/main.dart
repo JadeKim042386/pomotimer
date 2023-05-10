@@ -181,7 +181,7 @@ class PomoTimerView extends StatelessWidget {
         final int totalWorkingTime = prefs.getInt('totalWorkingTime')!;
         final int intervalTime =
             (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
-        return Future.value(intervalTime * 60);
+        return Future.value(intervalTime < 0 ? 0 : intervalTime * 60);
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();
