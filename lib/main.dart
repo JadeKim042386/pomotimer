@@ -117,6 +117,7 @@ void onStart(ServiceInstance service) async {
   service.on('sendTime').listen((event) async {
     if (event!.containsKey('currentTime') && event['currentTime'] > 0) {
       int seconds = event['currentTime'];
+      bool isBreak = event['isBreak'];
       if (service is AndroidServiceInstance) {
         if (await service.isForegroundService()) {
           /// OPTIONAL for use custom notification
@@ -124,7 +125,7 @@ void onStart(ServiceInstance service) async {
           flutterLocalNotificationsPlugin.show(
             888,
             'POMOTIMER',
-            '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}',
+            '${isBreak ? 'Break Time:' : ''} ${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}',
             const NotificationDetails(
               android: AndroidNotificationDetails(
                 'my_foreground',
