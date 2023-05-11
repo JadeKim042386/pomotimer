@@ -24,7 +24,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const settingTypeString = ['ROUND', 'TIME', 'COUNT'];
-  final FixedExtentScrollController listWheelController =
+  FixedExtentScrollController listWheelController =
       FixedExtentScrollController();
   final double itemExtent = 60;
   DateTime? currentBackPressTime;
@@ -58,15 +58,17 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     ).load();
-    controllerInit();
   }
 
   Future controllerInit() async {
     final prefs = await SharedPreferences.getInstance();
     final int selectedIndex = prefs.getInt('selectedIndex') ?? 0;
-    listWheelController.animateToItem(selectedIndex,
-        duration: const Duration(seconds: 3), curve: Curves.linear);
     listWheelController.jumpToItem(selectedIndex);
+    // final double oneExtent = listWheelController.position.maxScrollExtent / 5;
+    // listWheelController.animateTo(oneExtent * selectedIndex,
+    //     duration: const Duration(milliseconds: 200), curve: Curves.linear);
+    await listWheelController.animateToItem(selectedIndex,
+        duration: const Duration(milliseconds: 200), curve: Curves.linear);
   }
 
   Future<InitializationStatus> _initGoogleMobileAds() {
@@ -206,7 +208,6 @@ class _HomeScreenState extends State<HomeScreen> {
               if (result == null && mounted) {
                 setState(() {
                   context.read<TimerBloc>().add(TimerReset(getDuration()));
-                  controllerInit();
                 });
               }
             },
@@ -423,63 +424,75 @@ class _HomeScreenState extends State<HomeScreen> {
                                 blendMode: BlendMode.dstOut,
                                 child: RotatedBox(
                                   quarterTurns: -1,
-                                  child: ListWheelScrollView(
-                                    itemExtent: itemExtent,
-                                    squeeze: 0.7,
-                                    diameterRatio: 10,
-                                    controller: listWheelController,
-                                    children: [
-                                      for (int i = 0;
-                                          i < TimerBloc.times.length;
-                                          i++)
-                                        RotatedBox(
-                                          quarterTurns: 1,
-                                          child: Container(
-                                            alignment: Alignment.center,
-                                            width: MediaQuery.of(context)
-                                                    .size
-                                                    .width /
-                                                7,
-                                            decoration: BoxDecoration(
-                                              color: getFromRepo(
-                                                          'selectedIndex') ==
-                                                      i
-                                                  ? Colors.black
-                                                  : Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(5),
-                                              border: Border.all(
-                                                color: Colors.black,
-                                                width: 3,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              '${TimerBloc.times[i]}',
-                                              style: TextStyle(
-                                                color: getFromRepo(
-                                                            'selectedIndex') ==
-                                                        i
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                                fontSize: 23,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                    ],
-                                    onSelectedItemChanged: (int index) async {
-                                      if (state is! TimerRunInProgress) {
-                                        context
-                                            .read<VariableRepository>()
-                                            .setInt('selectedIndex', index);
-                                        context
-                                            .read<TimerBloc>()
-                                            .add(TimerReset(getDuration()));
-                                        setState(() {});
-                                      }
-                                    },
-                                  ),
+                                  child: BlocBuilder<TimerBloc, TimerState>(
+                                      buildWhen: (previous, current) =>
+                                          previous != current &&
+                                          current is TimerInitial,
+                                      builder: (context, state) {
+                                        controllerInit();
+                                        return ListWheelScrollView(
+                                          itemExtent: itemExtent,
+                                          squeeze: 0.7,
+                                          diameterRatio: 10,
+                                          controller: listWheelController,
+                                          physics:
+                                              const FixedExtentScrollPhysics(),
+                                          children: [
+                                            for (int i = 0;
+                                                i < TimerBloc.times.length;
+                                                i++)
+                                              RotatedBox(
+                                                quarterTurns: 1,
+                                                child: Container(
+                                                  alignment: Alignment.center,
+                                                  width: MediaQuery.of(context)
+                                                          .size
+                                                          .width /
+                                                      7,
+                                                  decoration: BoxDecoration(
+                                                    color: getFromRepo(
+                                                                'selectedIndex') ==
+                                                            i
+                                                        ? Colors.black
+                                                        : Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    border: Border.all(
+                                                      color: Colors.black,
+                                                      width: 3,
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    '${TimerBloc.times[i]}',
+                                                    style: TextStyle(
+                                                      color: getFromRepo(
+                                                                  'selectedIndex') ==
+                                                              i
+                                                          ? Colors.white
+                                                          : Colors.black,
+                                                      fontSize: 23,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                          ],
+                                          onSelectedItemChanged:
+                                              (int index) async {
+                                            if (state is! TimerRunInProgress) {
+                                              context
+                                                  .read<VariableRepository>()
+                                                  .setInt(
+                                                      'selectedIndex', index);
+                                              context.read<TimerBloc>().add(
+                                                  TimerReset(getDuration()));
+                                              setState(() {});
+                                            }
+                                          },
+                                        );
+                                      }),
                                 ),
                               ),
                             )
