@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (settingType == 0) {
         return '$round/${getFromRepo('totalRound')}';
       } else if (settingType == 1) {
-        return '${timeToString(time)}/${timeToString(getFromRepo('totalWorkingTime') - (((getFromRepo('breakTime') - 3) ~/ 60) * getFromRepo('totalRound')))}';
+        return '${timeToString(time, true)}/${timeToString(getFromRepo('totalWorkingTime') - (((getFromRepo('breakTime') - 3) ~/ 60) * getFromRepo('totalRound')), true)}';
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();
