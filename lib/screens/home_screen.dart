@@ -23,12 +23,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final FixedExtentScrollController listWheelController =
+  static const settingTypeString = ['ROUND', 'TIME', 'COUNT'];
+  FixedExtentScrollController listWheelController =
       FixedExtentScrollController();
   final double itemExtent = 60;
   DateTime? currentBackPressTime;
+  DateTime? currentResetPressTime;
   BannerAd? _bannerAd;
-  static const settingTypeString = ['ROUND', 'TIME', 'COUNT'];
+  int round = 0;
+  int time = 0;
+  int index = 0;
 
   @override
   void dispose() {
@@ -55,35 +59,21 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     ).load();
-    controllerInit();
   }
 
   Future controllerInit() async {
     final prefs = await SharedPreferences.getInstance();
     final int selectedIndex = prefs.getInt('selectedIndex') ?? 0;
-    listWheelController.animateToItem(selectedIndex,
-        duration: const Duration(seconds: 3), curve: Curves.linear);
     listWheelController.jumpToItem(selectedIndex);
+    // final double oneExtent = listWheelController.position.maxScrollExtent / 5;
+    // listWheelController.animateTo(oneExtent * selectedIndex,
+    //     duration: const Duration(milliseconds: 200), curve: Curves.linear);
+    await listWheelController.animateToItem(selectedIndex,
+        duration: const Duration(milliseconds: 200), curve: Curves.linear);
   }
 
   Future<InitializationStatus> _initGoogleMobileAds() {
     return MobileAds.instance.initialize();
-  }
-
-  void showAlertScreen(BuildContext context, String text) async {
-    if (mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) {
-            return AlertScreen(
-              text: text,
-            );
-          },
-        ),
-      );
-    }
-    await Future.delayed(const Duration(seconds: 3));
-    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -95,9 +85,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final TextEditingController btTextController = TextEditingController();
     btTextController.text = ((getFromRepo('breakTime') - 3) ~/ 60).toString();
 
-    int round = 0;
-    int time = 0;
-    int index = 0;
+    void showAlertScreen(String text) async {
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) {
+              return AlertScreen(
+                text: text,
+              );
+            },
+          ),
+        );
+      }
+      await Future.delayed(const Duration(seconds: 3));
+      if (mounted) Navigator.of(context).pop();
+    }
 
     Future<bool> onWillPop() {
       DateTime now = DateTime.now();
@@ -115,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (settingType == 0) {
         return '$round/${getFromRepo('totalRound')}';
       } else if (settingType == 1) {
-        return '${timeToString(time)}/${timeToString(getFromRepo('totalWorkingTime') - (((getFromRepo('breakTime') - 3) ~/ 60) * getFromRepo('totalRound')))}';
+        return '${timeToString(time, false)}/${timeToString(getFromRepo('totalWorkingTime') - (((getFromRepo('breakTime') - 3) ~/ 60) * getFromRepo('totalRound')), true)}';
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();
@@ -130,11 +132,14 @@ class _HomeScreenState extends State<HomeScreen> {
         return TimerBloc.times[getFromRepo('selectedIndex')] * 60;
       } else if (settingType == 1) {
         final int totalRound = getFromRepo('totalRound');
-        final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
-        final int totalWorkingTime = getFromRepo('totalWorkingTime');
+        final int breakTime = getFromRepo('breakTime') == 0
+            ? 0
+            : getFromRepo('breakTime') - 3; // second
+        final int totalWorkingTime =
+            getFromRepo('totalWorkingTime') * 60; // second
         final int intervalTime =
             (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
-        return intervalTime < 0 ? 0 : intervalTime * 60;
+        return intervalTime < 0 ? 0 : intervalTime;
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();
@@ -145,6 +150,20 @@ class _HomeScreenState extends State<HomeScreen> {
       return 0;
     }
 
+    void onResetPressed() {
+      DateTime now = DateTime.now();
+      if (currentResetPressTime == null ||
+          now.difference(currentResetPressTime!) > const Duration(seconds: 2)) {
+        currentResetPressTime = now;
+        context.read<TimerBloc>().add(TimerReset(getDuration()));
+      } else {
+        round = 0;
+        time = 0;
+        index = 0;
+        setState(() {});
+      }
+    }
+
     bool getListenWhen(previous, current) {
       final int settingType = getFromRepo('settingType');
       if (settingType == 0) {
@@ -153,15 +172,16 @@ class _HomeScreenState extends State<HomeScreen> {
             (round + 1 != getFromRepo('totalRound') || !current.isBreak);
       } else if (settingType == 1) {
         final int totalRound = getFromRepo('totalRound');
-        final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
-        int totalWorkingTime = getFromRepo('totalWorkingTime');
+        final int breakTime = getFromRepo('breakTime') == 0
+            ? 0
+            : getFromRepo('breakTime') - 3; // second
+        int totalWorkingTime = getFromRepo('totalWorkingTime') * 60;
         final int intervalTime =
             (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
         totalWorkingTime = intervalTime * totalRound;
         return totalWorkingTime > intervalTime &&
             previous.isBreak != current.isBreak &&
-            (time + intervalTime != getFromRepo('totalWorkingTime') ||
-                !current.isBreak);
+            (time + intervalTime != totalWorkingTime || !current.isBreak);
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();
@@ -203,7 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
               if (result == null && mounted) {
                 setState(() {
                   context.read<TimerBloc>().add(TimerReset(getDuration()));
-                  controllerInit();
                 });
               }
             },
@@ -221,38 +240,75 @@ class _HomeScreenState extends State<HomeScreen> {
           listener: (context, state) {
             if (state.isBreak) {
               final int settingType = getFromRepo('settingType');
+              bool isBreakTime = true;
               // set break time
               if (settingType == 2) {
                 final breakTime = context
                     .read<VariableRepository>()
                     .getCustomTimeModels()[index]
                     .breakTime;
-                context.read<TimerBloc>().add(TimerStarted(
-                      duration: breakTime,
-                      isBreak: state.isBreak,
-                    ));
+
+                if (breakTime == 0) {
+                  isBreakTime = false;
+                  context.read<TimerBloc>().add(TimerStarted(
+                        duration: 0,
+                        isBreak: !state.isBreak,
+                      ));
+                } else {
+                  context.read<TimerBloc>().add(TimerStarted(
+                        duration: breakTime,
+                        isBreak: state.isBreak,
+                      ));
+                }
               } else {
-                context.read<TimerBloc>().add(TimerStarted(
-                      duration: getFromRepo('breakTime'),
-                      isBreak: state.isBreak,
-                    ));
+                if (getFromRepo('breakTime') == 0) {
+                  isBreakTime = false;
+                  context.read<TimerBloc>().add(TimerStarted(
+                        duration: 0,
+                        isBreak: !state.isBreak,
+                      ));
+                } else {
+                  context.read<TimerBloc>().add(TimerStarted(
+                        duration: getFromRepo('breakTime'),
+                        isBreak: state.isBreak,
+                      ));
+                }
               }
               // current value update
               if (settingType == 0) {
                 round++;
+                if (round == getFromRepo('totalRound')) {
+                  isBreakTime = false;
+                }
               } else if (settingType == 1) {
                 final int totalRound = getFromRepo('totalRound');
-                final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
-                final int totalWorkingTime = getFromRepo('totalWorkingTime');
+                final int breakTime = getFromRepo('breakTime') == 0
+                    ? 0
+                    : getFromRepo('breakTime') - 3; // second
+                final int totalWorkingTime =
+                    getFromRepo('totalWorkingTime') * 60;
                 final int intervalTime =
                     (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
                 time = time + intervalTime;
+                if (time == intervalTime * totalRound) {
+                  isBreakTime = false;
+                }
               } else if (settingType == 2) {
                 index++;
+                if (index ==
+                    context
+                        .read<VariableRepository>()
+                        .getCustomTimeModels()
+                        .length) {
+                  isBreakTime = false;
+                }
               }
-              showAlertScreen(context, 'Break Time!');
-            } else if (!state.isBreak && index != 0) {
-              showAlertScreen(context, 'Working Time!');
+              if (isBreakTime) {
+                showAlertScreen('Break Time!');
+              }
+            } else if (!state.isBreak &&
+                (index != 0 || time != 0 || round != 0)) {
+              showAlertScreen('Working Time!');
               context.read<TimerBloc>().add(TimerStarted(
                     duration: getDuration(),
                     isBreak: state.isBreak,
@@ -264,24 +320,32 @@ class _HomeScreenState extends State<HomeScreen> {
             if (state.duration == 0 && state.isBreak) {
               final int settingType = getFromRepo('settingType');
               final int totalRound = getFromRepo('totalRound');
-              final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
-              final int totalWorkingTime = getFromRepo('totalWorkingTime');
+              final int breakTime = getFromRepo('breakTime') == 0
+                  ? 0
+                  : getFromRepo('breakTime') - 3; // second
+              final int totalWorkingTime = getFromRepo('totalWorkingTime') * 60;
               final int intervalTime =
                   (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
               final List<CustomTimeModel> customTimeModels =
                   context.read<VariableRepository>().getCustomTimeModels();
-              context
-                  .read<TimerBloc>()
-                  .vibration([500, 1000, 500, 1000, 500, 1000]);
-              context.read<TimerBloc>().add(TimerReset(getDuration()));
+              bool showScreen = false;
               if (settingType == 0 && round + 1 == getFromRepo('totalRound')) {
                 round = 0;
+                showScreen = true;
               } else if (settingType == 1 &&
                   time + intervalTime == intervalTime * totalRound) {
                 time = 0;
+                showScreen = true;
               } else if (settingType == 2 &&
                   index + 1 == customTimeModels.length) {
                 index = 0;
+                showScreen = true;
+              }
+              if (showScreen) {
+                context
+                    .read<TimerBloc>()
+                    .vibration([500, 1000, 500, 1000, 500, 1000]);
+                context.read<TimerBloc>().add(TimerReset(getDuration()));
               }
             }
 
@@ -374,63 +438,75 @@ class _HomeScreenState extends State<HomeScreen> {
                                 blendMode: BlendMode.dstOut,
                                 child: RotatedBox(
                                   quarterTurns: -1,
-                                  child: ListWheelScrollView(
-                                    itemExtent: itemExtent,
-                                    squeeze: 0.7,
-                                    diameterRatio: 10,
-                                    controller: listWheelController,
-                                    children: [
-                                      for (int i = 0;
-                                          i < TimerBloc.times.length;
-                                          i++)
-                                        RotatedBox(
-                                          quarterTurns: 1,
-                                          child: Container(
-                                            alignment: Alignment.center,
-                                            width: MediaQuery.of(context)
-                                                    .size
-                                                    .width /
-                                                7,
-                                            decoration: BoxDecoration(
-                                              color: getFromRepo(
-                                                          'selectedIndex') ==
-                                                      i
-                                                  ? Colors.black
-                                                  : Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(5),
-                                              border: Border.all(
-                                                color: Colors.black,
-                                                width: 3,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              '${TimerBloc.times[i]}',
-                                              style: TextStyle(
-                                                color: getFromRepo(
-                                                            'selectedIndex') ==
-                                                        i
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                                fontSize: 23,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                    ],
-                                    onSelectedItemChanged: (int index) async {
-                                      if (state is! TimerRunInProgress) {
-                                        context
-                                            .read<VariableRepository>()
-                                            .setInt('selectedIndex', index);
-                                        context
-                                            .read<TimerBloc>()
-                                            .add(TimerReset(getDuration()));
-                                        setState(() {});
-                                      }
-                                    },
-                                  ),
+                                  child: BlocBuilder<TimerBloc, TimerState>(
+                                      buildWhen: (previous, current) =>
+                                          previous != current &&
+                                          current is TimerInitial,
+                                      builder: (context, state) {
+                                        controllerInit();
+                                        return ListWheelScrollView(
+                                          itemExtent: itemExtent,
+                                          squeeze: 0.7,
+                                          diameterRatio: 10,
+                                          controller: listWheelController,
+                                          physics:
+                                              const FixedExtentScrollPhysics(),
+                                          children: [
+                                            for (int i = 0;
+                                                i < TimerBloc.times.length;
+                                                i++)
+                                              RotatedBox(
+                                                quarterTurns: 1,
+                                                child: Container(
+                                                  alignment: Alignment.center,
+                                                  width: MediaQuery.of(context)
+                                                          .size
+                                                          .width /
+                                                      7,
+                                                  decoration: BoxDecoration(
+                                                    color: getFromRepo(
+                                                                'selectedIndex') ==
+                                                            i
+                                                        ? Colors.black
+                                                        : Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    border: Border.all(
+                                                      color: Colors.black,
+                                                      width: 3,
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    '${TimerBloc.times[i]}',
+                                                    style: TextStyle(
+                                                      color: getFromRepo(
+                                                                  'selectedIndex') ==
+                                                              i
+                                                          ? Colors.white
+                                                          : Colors.black,
+                                                      fontSize: 23,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                          ],
+                                          onSelectedItemChanged:
+                                              (int index) async {
+                                            if (state is! TimerRunInProgress) {
+                                              context
+                                                  .read<VariableRepository>()
+                                                  .setInt(
+                                                      'selectedIndex', index);
+                                              context.read<TimerBloc>().add(
+                                                  TimerReset(getDuration()));
+                                              setState(() {});
+                                            }
+                                          },
+                                        );
+                                      }),
                                 ),
                               ),
                             )
@@ -486,11 +562,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: EdgeInsets.fromLTRB(0,
                                 MediaQuery.of(context).size.height / 60, 0, 0),
                             child: IconButton(
-                              onPressed: state.isBreak
-                                  ? null
-                                  : () => context
-                                      .read<TimerBloc>()
-                                      .add(TimerReset(getDuration())),
+                              onPressed:
+                                  state.isBreak ? null : () => onResetPressed(),
                               icon: Icon(
                                 Icons.autorenew,
                                 size: MediaQuery.of(context).size.width / 15,
@@ -501,8 +574,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
+                  if (state.isBreak)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 30),
+                      child: Icon(
+                        Icons.emoji_food_beverage_rounded,
+                        size: MediaQuery.of(context).size.width / 5,
+                        color: Colors.black,
+                      ),
+                    ),
                   // Progress Section
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

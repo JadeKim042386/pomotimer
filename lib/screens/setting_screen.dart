@@ -14,8 +14,8 @@ class SettingScreen extends StatefulWidget {
 class _SettingScreenState extends State<SettingScreen> {
   @override
   Widget build(BuildContext context) {
-    ValueNotifier<int> toggleIndex =
-        ValueNotifier(context.read<VariableRepository>().getInt('settingType'));
+    int getFromRepo(key) => context.read<VariableRepository>().getInt(key);
+    ValueNotifier<int> toggleIndex = ValueNotifier(getFromRepo('settingType'));
     TextStyle toggleTextStyle = const TextStyle(
       fontWeight: FontWeight.w500,
     );
@@ -23,6 +23,18 @@ class _SettingScreenState extends State<SettingScreen> {
       fontWeight: FontWeight.w500,
       fontSize: 16,
     );
+
+    String getIntervalTime() {
+      final int totalRound = getFromRepo('totalRound');
+      final int breakTime = getFromRepo('breakTime') == 0
+          ? 0
+          : getFromRepo('breakTime') - 3; // second
+      final int totalWorkingTime =
+          getFromRepo('totalWorkingTime') * 60; // second
+      final int intervalTime =
+          (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
+      return timeToString(intervalTime, false);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -97,7 +109,8 @@ class _SettingScreenState extends State<SettingScreen> {
                                     inactiveColor: Colors.grey,
                                     thumbColor: Colors.black,
                                     value: workingTime.value.toDouble(),
-                                    label: timeToString(workingTime.value),
+                                    label:
+                                        timeToString(workingTime.value, true),
                                     onChanged: (double value) {
                                       setState(() {
                                         workingTime.value = value.toInt();
@@ -261,6 +274,26 @@ class _SettingScreenState extends State<SettingScreen> {
                               .getInt('totalWorkingTime')
                               .toString()),
                           settingSlider(60.0 * 10, 'totalWorkingTime'),
+                          const SizedBox(
+                            height: 20,
+                          ),
+                          Container(
+                            height: 50,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              color: Colors.black.withOpacity(0.6),
+                            ),
+                            child: Text(
+                              '1 Rround: ${getIntervalTime()}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -319,7 +352,8 @@ class _SettingScreenState extends State<SettingScreen> {
                                       children: [
                                         Text(
                                           timeToString(
-                                              customTimeModel.workingTime),
+                                              customTimeModel.workingTime,
+                                              true),
                                           style: sliderTextStyle,
                                           textAlign: TextAlign.center,
                                         ),
@@ -329,7 +363,8 @@ class _SettingScreenState extends State<SettingScreen> {
                                         Text(
                                           timeToString(
                                               (customTimeModel.breakTime - 3) ~/
-                                                  60),
+                                                  60,
+                                              true),
                                           style: sliderTextStyle,
                                         ),
                                       ],
@@ -413,7 +448,8 @@ class _SettingScreenState extends State<SettingScreen> {
         case 'breakTime':
           {
             return timeToString(
-                (context.read<VariableRepository>().getInt(key) - 3) ~/ 60);
+                (context.read<VariableRepository>().getInt(key) - 3) ~/ 60,
+                true);
           }
         case 'totalWorkingTime':
           {
@@ -421,7 +457,8 @@ class _SettingScreenState extends State<SettingScreen> {
                 context.read<VariableRepository>().getInt(key);
             final int minValue = getMinValue(key).toInt();
             return timeToString(
-                totalWorkingTime < minValue ? minValue : totalWorkingTime);
+                totalWorkingTime < minValue ? minValue : totalWorkingTime,
+                true);
           }
         case 'totalRound':
           {
@@ -440,7 +477,7 @@ class _SettingScreenState extends State<SettingScreen> {
           {
             context
                 .read<VariableRepository>()
-                .setInt(key, value.toInt() * 60 + 3);
+                .setInt(key, value.toInt() == 0 ? 0 : value.toInt() * 60 + 3);
           }
           break;
         case 'totalRound':
@@ -480,14 +517,17 @@ class _SettingScreenState extends State<SettingScreen> {
   }
 }
 
-String timeToString(int value) {
+String timeToString(int value, bool isMinute) {
+  // value is minute
+  final String firstUnit = isMinute ? 'h' : 'm';
+  final String secondUnit = isMinute ? 'm' : 's';
   if (value >= 60) {
     if (value % 60 > 0) {
-      return '${value ~/ 60}h ${value % 60}m';
+      return '${value ~/ 60}$firstUnit ${value % 60}$secondUnit';
     } else {
-      return '${value ~/ 60}h';
+      return '${value ~/ 60}$firstUnit';
     }
   } else {
-    return value == 0 ? '0' : '${value % 60}m';
+    return value == 0 ? '0' : '${value % 60}$secondUnit';
   }
 }
