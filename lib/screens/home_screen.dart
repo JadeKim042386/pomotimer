@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
       FixedExtentScrollController();
   final double itemExtent = 60;
   DateTime? currentBackPressTime;
+  DateTime? currentResetPressTime;
   BannerAd? _bannerAd;
   int round = 0;
   int time = 0;
@@ -147,6 +148,20 @@ class _HomeScreenState extends State<HomeScreen> {
             : 0;
       }
       return 0;
+    }
+
+    void onResetPressed() {
+      DateTime now = DateTime.now();
+      if (currentResetPressTime == null ||
+          now.difference(currentResetPressTime!) > const Duration(seconds: 2)) {
+        currentResetPressTime = now;
+        context.read<TimerBloc>().add(TimerReset(getDuration()));
+      } else {
+        round = 0;
+        time = 0;
+        index = 0;
+        setState(() {});
+      }
     }
 
     bool getListenWhen(previous, current) {
@@ -548,11 +563,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: EdgeInsets.fromLTRB(0,
                                 MediaQuery.of(context).size.height / 60, 0, 0),
                             child: IconButton(
-                              onPressed: state.isBreak
-                                  ? null
-                                  : () => context
-                                      .read<TimerBloc>()
-                                      .add(TimerReset(getDuration())),
+                              onPressed:
+                                  state.isBreak ? null : () => onResetPressed(),
                               icon: Icon(
                                 Icons.autorenew,
                                 size: MediaQuery.of(context).size.width / 15,
