@@ -440,7 +440,7 @@ class _SettingScreenState extends State<SettingScreen> {
           {
             context
                 .read<VariableRepository>()
-                .setInt(key, value.toInt() * 60 + 3);
+                .setInt(key, value.toInt() == 0 ? 0 : value.toInt() * 60 + 3);
           }
           break;
         case 'totalRound':

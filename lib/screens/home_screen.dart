@@ -23,12 +23,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const settingTypeString = ['ROUND', 'TIME', 'COUNT'];
   final FixedExtentScrollController listWheelController =
       FixedExtentScrollController();
   final double itemExtent = 60;
   DateTime? currentBackPressTime;
   BannerAd? _bannerAd;
-  static const settingTypeString = ['ROUND', 'TIME', 'COUNT'];
+  int round = 0;
+  int time = 0;
+  int index = 0;
 
   @override
   void dispose() {
@@ -70,22 +73,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return MobileAds.instance.initialize();
   }
 
-  void showAlertScreen(BuildContext context, String text) async {
-    if (mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) {
-            return AlertScreen(
-              text: text,
-            );
-          },
-        ),
-      );
-    }
-    await Future.delayed(const Duration(seconds: 3));
-    if (mounted) Navigator.of(context).pop();
-  }
-
   @override
   Widget build(BuildContext context) {
     int getFromRepo(String key) =>
@@ -95,9 +82,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final TextEditingController btTextController = TextEditingController();
     btTextController.text = ((getFromRepo('breakTime') - 3) ~/ 60).toString();
 
-    int round = 0;
-    int time = 0;
-    int index = 0;
+    void showAlertScreen(String text) async {
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) {
+              return AlertScreen(
+                text: text,
+              );
+            },
+          ),
+        );
+      }
+      await Future.delayed(const Duration(seconds: 3));
+      if (mounted) Navigator.of(context).pop();
+    }
 
     Future<bool> onWillPop() {
       DateTime now = DateTime.now();
@@ -160,8 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
         totalWorkingTime = intervalTime * totalRound;
         return totalWorkingTime > intervalTime &&
             previous.isBreak != current.isBreak &&
-            (time + intervalTime != getFromRepo('totalWorkingTime') ||
-                !current.isBreak);
+            (time + intervalTime != totalWorkingTime || !current.isBreak);
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();
@@ -221,25 +219,46 @@ class _HomeScreenState extends State<HomeScreen> {
           listener: (context, state) {
             if (state.isBreak) {
               final int settingType = getFromRepo('settingType');
+              bool isBreakTime = true;
               // set break time
               if (settingType == 2) {
                 final breakTime = context
                     .read<VariableRepository>()
                     .getCustomTimeModels()[index]
                     .breakTime;
-                context.read<TimerBloc>().add(TimerStarted(
-                      duration: breakTime,
-                      isBreak: state.isBreak,
-                    ));
+
+                if (breakTime == 0) {
+                  isBreakTime = false;
+                  context.read<TimerBloc>().add(TimerStarted(
+                        duration: 0,
+                        isBreak: !state.isBreak,
+                      ));
+                } else {
+                  context.read<TimerBloc>().add(TimerStarted(
+                        duration: breakTime,
+                        isBreak: state.isBreak,
+                      ));
+                }
               } else {
-                context.read<TimerBloc>().add(TimerStarted(
-                      duration: getFromRepo('breakTime'),
-                      isBreak: state.isBreak,
-                    ));
+                if (getFromRepo('breakTime') == 0) {
+                  isBreakTime = false;
+                  context.read<TimerBloc>().add(TimerStarted(
+                        duration: 0,
+                        isBreak: !state.isBreak,
+                      ));
+                } else {
+                  context.read<TimerBloc>().add(TimerStarted(
+                        duration: getFromRepo('breakTime'),
+                        isBreak: state.isBreak,
+                      ));
+                }
               }
               // current value update
               if (settingType == 0) {
                 round++;
+                if (round == getFromRepo('totalRound')) {
+                  isBreakTime = false;
+                }
               } else if (settingType == 1) {
                 final int totalRound = getFromRepo('totalRound');
                 final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
@@ -247,12 +266,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 final int intervalTime =
                     (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
                 time = time + intervalTime;
+                if (time == intervalTime * totalRound) {
+                  isBreakTime = false;
+                }
               } else if (settingType == 2) {
                 index++;
+                if (index ==
+                    context
+                        .read<VariableRepository>()
+                        .getCustomTimeModels()
+                        .length) {
+                  isBreakTime = false;
+                }
               }
-              showAlertScreen(context, 'Break Time!');
-            } else if (!state.isBreak && index != 0) {
-              showAlertScreen(context, 'Working Time!');
+              if (isBreakTime) {
+                showAlertScreen('Break Time!');
+              }
+            } else if (!state.isBreak && (index != 0 || time != 0)) {
+              showAlertScreen('Working Time!');
               context.read<TimerBloc>().add(TimerStarted(
                     duration: getDuration(),
                     isBreak: state.isBreak,
@@ -261,7 +292,9 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           builder: (context, state) {
             // reset when complete
-            if (state.duration == 0 && state.isBreak) {
+            if ((state.duration == getFromRepo('breakTime') ||
+                    state.duration == 0) &&
+                state.isBreak) {
               final int settingType = getFromRepo('settingType');
               final int totalRound = getFromRepo('totalRound');
               final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
@@ -270,18 +303,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
               final List<CustomTimeModel> customTimeModels =
                   context.read<VariableRepository>().getCustomTimeModels();
-              context
-                  .read<TimerBloc>()
-                  .vibration([500, 1000, 500, 1000, 500, 1000]);
-              context.read<TimerBloc>().add(TimerReset(getDuration()));
+              bool showScreen = false;
               if (settingType == 0 && round + 1 == getFromRepo('totalRound')) {
                 round = 0;
+                showScreen = true;
               } else if (settingType == 1 &&
                   time + intervalTime == intervalTime * totalRound) {
                 time = 0;
+                showScreen = true;
               } else if (settingType == 2 &&
                   index + 1 == customTimeModels.length) {
                 index = 0;
+                showScreen = true;
+              }
+              if (showScreen) {
+                context
+                    .read<TimerBloc>()
+                    .vibration([500, 1000, 500, 1000, 500, 1000]);
+                context.read<TimerBloc>().add(TimerReset(getDuration()));
               }
             }
 

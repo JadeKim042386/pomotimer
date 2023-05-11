@@ -59,7 +59,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       service.invoke('sendTime',
           {'currentTime': event.duration, 'isBreak': event.isBreak});
     } else {
-      vibration([500, 1000, 500, 2000]);
+      if (event.duration > 0) {
+        vibration([500, 1000, 500, 2000]);
+      }
       emit(TimerRunInProgress(
         event.duration,
         !event.isBreak,
