@@ -117,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (settingType == 0) {
         return '$round/${getFromRepo('totalRound')}';
       } else if (settingType == 1) {
-        return '${timeToString(time, true)}/${timeToString(getFromRepo('totalWorkingTime') - (((getFromRepo('breakTime') - 3) ~/ 60) * getFromRepo('totalRound')), true)}';
+        return '${timeToString(time, false)}/${timeToString(getFromRepo('totalWorkingTime') - (((getFromRepo('breakTime') - 3) ~/ 60) * getFromRepo('totalRound')), true)}';
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();
@@ -306,7 +306,8 @@ class _HomeScreenState extends State<HomeScreen> {
               if (isBreakTime) {
                 showAlertScreen('Break Time!');
               }
-            } else if (!state.isBreak && (index != 0 || time != 0)) {
+            } else if (!state.isBreak &&
+                (index != 0 || time != 0 || round != 0)) {
               showAlertScreen('Working Time!');
               context.read<TimerBloc>().add(TimerStarted(
                     duration: getDuration(),
@@ -316,9 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           builder: (context, state) {
             // reset when complete
-            if ((state.duration == getFromRepo('breakTime') ||
-                    state.duration == 0) &&
-                state.isBreak) {
+            if (state.duration == 0 && state.isBreak) {
               final int settingType = getFromRepo('settingType');
               final int totalRound = getFromRepo('totalRound');
               final int breakTime = getFromRepo('breakTime') == 0
@@ -575,8 +574,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
+                  if (state.isBreak)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 30),
+                      child: Icon(
+                        Icons.emoji_food_beverage_rounded,
+                        size: MediaQuery.of(context).size.width / 5,
+                        color: Colors.black,
+                      ),
+                    ),
                   // Progress Section
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
