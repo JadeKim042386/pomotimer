@@ -12,7 +12,7 @@ class LocalStorageVariableApi extends VariableApi {
     _init();
   }
 
-  final _StreamController =
+  final _streamController =
       BehaviorSubject<List<CustomTimeModel>>.seeded(const []);
   static const customDataKey = '__custom_collection_key__';
 
@@ -32,13 +32,13 @@ class LocalStorageVariableApi extends VariableApi {
     }
     // minutes
     if (!_plugin.containsKey('totalWorkingTime')) {
-      await setInt('totalWorkingTime', 0);
+      await setInt('totalWorkingTime', 20);
     }
     // custom data
     if (!_plugin.containsKey(customDataKey)) {
       await _plugin.setString(customDataKey, json.encode([]));
     } else {
-      _StreamController.add(getCustomTimeModels());
+      _streamController.add(getCustomTimeModels());
     }
   }
 
@@ -64,14 +64,14 @@ class LocalStorageVariableApi extends VariableApi {
 
   @override
   Future<void> deleteCustomTimeModel(String id) {
-    final customTimeModels = [..._StreamController.value];
+    final customTimeModels = [..._streamController.value];
     final customTimeModelIndex =
         customTimeModels.indexWhere((element) => element.id == id);
     if (customTimeModelIndex == -1) {
       return setString(customDataKey, json.encode(customTimeModels));
     } else {
       customTimeModels.removeAt(customTimeModelIndex);
-      _StreamController.add(customTimeModels);
+      _streamController.add(customTimeModels);
       return setString(customDataKey, json.encode(customTimeModels));
     }
   }
@@ -90,7 +90,7 @@ class LocalStorageVariableApi extends VariableApi {
 
   @override
   Future<void> setCustomTimeModels(CustomTimeModel customTimeModel) {
-    final customTimeModels = [..._StreamController.value];
+    final customTimeModels = [..._streamController.value];
     final customTimeModelIndex = customTimeModels
         .indexWhere((element) => element.id == customTimeModel.id);
     if (customTimeModelIndex >= 0) {
@@ -99,7 +99,7 @@ class LocalStorageVariableApi extends VariableApi {
       customTimeModels.add(customTimeModel);
     }
 
-    _StreamController.add(customTimeModels);
+    _streamController.add(customTimeModels);
 
     return setString(customDataKey, json.encode(customTimeModels));
   }

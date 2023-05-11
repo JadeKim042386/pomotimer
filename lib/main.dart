@@ -171,7 +171,13 @@ class PomoTimerView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Future<int> getInitDuration() async {
-      final int settingType = prefs.getInt('settingType')!;
+      int? settingType;
+      while (true) {
+        settingType = prefs.getInt('settingType');
+        if (settingType != null) {
+          break;
+        }
+      }
       if (settingType == 0) {
         return Future.value(
             TimerBloc.times[prefs.getInt('selectedIndex')!] * 60);
