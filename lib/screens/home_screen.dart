@@ -129,11 +129,14 @@ class _HomeScreenState extends State<HomeScreen> {
         return TimerBloc.times[getFromRepo('selectedIndex')] * 60;
       } else if (settingType == 1) {
         final int totalRound = getFromRepo('totalRound');
-        final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
-        final int totalWorkingTime = getFromRepo('totalWorkingTime');
+        final int breakTime = getFromRepo('breakTime') == 0
+            ? 0
+            : getFromRepo('breakTime') - 3; // second
+        final int totalWorkingTime =
+            getFromRepo('totalWorkingTime') * 60; // second
         final int intervalTime =
             (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
-        return intervalTime < 0 ? 0 : intervalTime * 60;
+        return intervalTime < 0 ? 0 : intervalTime;
       } else if (settingType == 2) {
         final List<CustomTimeModel> customTimeModels =
             context.read<VariableRepository>().getCustomTimeModels();
@@ -152,8 +155,10 @@ class _HomeScreenState extends State<HomeScreen> {
             (round + 1 != getFromRepo('totalRound') || !current.isBreak);
       } else if (settingType == 1) {
         final int totalRound = getFromRepo('totalRound');
-        final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
-        int totalWorkingTime = getFromRepo('totalWorkingTime');
+        final int breakTime = getFromRepo('breakTime') == 0
+            ? 0
+            : getFromRepo('breakTime') - 3; // second
+        int totalWorkingTime = getFromRepo('totalWorkingTime') * 60;
         final int intervalTime =
             (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
         totalWorkingTime = intervalTime * totalRound;
@@ -261,8 +266,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               } else if (settingType == 1) {
                 final int totalRound = getFromRepo('totalRound');
-                final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
-                final int totalWorkingTime = getFromRepo('totalWorkingTime');
+                final int breakTime = getFromRepo('breakTime') == 0
+                    ? 0
+                    : getFromRepo('breakTime') - 3; // second
+                final int totalWorkingTime =
+                    getFromRepo('totalWorkingTime') * 60;
                 final int intervalTime =
                     (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
                 time = time + intervalTime;
@@ -297,8 +305,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 state.isBreak) {
               final int settingType = getFromRepo('settingType');
               final int totalRound = getFromRepo('totalRound');
-              final int breakTime = (getFromRepo('breakTime') - 3) ~/ 60;
-              final int totalWorkingTime = getFromRepo('totalWorkingTime');
+              final int breakTime = getFromRepo('breakTime') == 0
+                  ? 0
+                  : getFromRepo('breakTime') - 3; // second
+              final int totalWorkingTime = getFromRepo('totalWorkingTime') * 60;
               final int intervalTime =
                   (totalWorkingTime - (breakTime * totalRound)) ~/ totalRound;
               final List<CustomTimeModel> customTimeModels =
