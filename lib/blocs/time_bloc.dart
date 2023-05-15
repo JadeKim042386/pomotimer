@@ -22,7 +22,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     on<TimerTicked>(_onTicked);
   }
 
-  static const List<int> times = [1, 15, 20, 25, 30, 35];
+  static const List<int> times = [15, 20, 25, 30, 35];
   final Ticker _ticker;
   final SharedPreferences prefs;
   final int initDuration;
@@ -59,9 +59,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       service.invoke('sendTime',
           {'currentTime': event.duration, 'isBreak': event.isBreak});
     } else {
-      if (event.duration > 0) {
-        vibration([500, 1000, 500, 2000]);
-      }
+      vibration([500, 1000, 500, 2000]);
       emit(TimerRunInProgress(
         event.duration,
         !event.isBreak,
