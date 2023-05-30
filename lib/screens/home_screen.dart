@@ -68,7 +68,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     lifecycleState = state;
-    print(state);
     super.didChangeAppLifecycleState(state);
   }
 
