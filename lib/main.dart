@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -57,6 +56,7 @@ Future<void> onService(args) async {
   final service = FlutterBackgroundService();
   final servicePort = ReceivePort();
   var isServiceRunning = await service.isRunning();
+  StreamSubscription<int>? tickerSubscription;
   const ticker = Ticker();
 
   Future<void> disposeService(String message) async {
@@ -66,23 +66,10 @@ Future<void> onService(args) async {
     }
   }
 
-  servicePort.listen((message) async {
-    if (message == 'stopService') {
-      await disposeService(message);
-    } else if (message is List) {
-      ticker.tick(ticks: message[0]).listen((duration) => service.invoke(
-          'sendTime', {'currentTime': duration, 'isBreak': message[1]}));
-    } else if (message == 'exit') {
-      await disposeService('stopService');
-      exit(0);
-    }
-  });
-  args[2].send(servicePort.sendPort);
-
   if (!isServiceRunning) {
     await service.startService();
   }
-  ticker.tick(ticks: args[0]).listen((duration) async {
+  tickerSubscription = ticker.tick(ticks: args[0]).listen((duration) async {
     var isServiceRunning = await service.isRunning();
     if (isServiceRunning) {
       service.invoke('sendTime', {'currentTime': duration, 'isBreak': args[1]});
@@ -90,6 +77,20 @@ Future<void> onService(args) async {
       args[2].send('pause');
     }
   });
+
+  servicePort.listen((message) async {
+    if (message == 'stopService') {
+      await disposeService(message);
+    } else if (message is List) {
+      tickerSubscription = ticker.tick(ticks: message[0]).listen((duration) =>
+          service.invoke(
+              'sendTime', {'currentTime': duration, 'isBreak': message[1]}));
+    } else if (message == 'exit') {
+      await disposeService('stopService');
+      tickerSubscription!.cancel();
+    }
+  });
+  args[2].send(servicePort.sendPort);
 }
 
 Future<void> initializeService() async {

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:pomotimer/ad_helper.dart';
@@ -67,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     lifecycleState = state;
+    print(state);
     super.didChangeAppLifecycleState(state);
   }
 
@@ -112,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }
 
-    Future<bool> onWillPop() {
+    Future<bool> onWillPop() async {
       DateTime now = DateTime.now();
       if (currentBackPressTime == null ||
           now.difference(currentBackPressTime!) > const Duration(seconds: 2)) {
@@ -122,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final isolatePort = context.read<TimerBloc>().isolatePort;
       if (isolatePort != null) {
         isolatePort.send('exit');
+        await SystemNavigator.pop();
       }
       return Future.value(true);
     }
