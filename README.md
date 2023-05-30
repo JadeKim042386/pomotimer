@@ -13,7 +13,7 @@ The `Pomodoro` technique is a method of concentrating for a certain amount of ti
 - Settings
     1. Round
         - Break Time
-        - Total Round
+        - Total Round  
         \* The time per round is selected using wheel list on home
 
     2. Time
