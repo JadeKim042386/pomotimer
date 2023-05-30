@@ -108,7 +108,10 @@ class _HomeScreenState extends State<HomeScreen> {
         currentBackPressTime = now;
         return Future.value(false);
       }
-      context.read<TimerBloc>().serviceDispose();
+      final isolatePort = context.read<TimerBloc>().isolatePort;
+      if (isolatePort != null) {
+        isolatePort.send('exit');
+      }
       return Future.value(true);
     }
 
@@ -213,6 +216,10 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             onPressed: () async {
+              final isolate = context.read<TimerBloc>().isolate;
+              if (isolate != null) {
+                isolate.pause();
+              }
               final result = await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) {
@@ -221,6 +228,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
               if (result == null && mounted) {
+                if (isolate != null) {
+                  isolate.resume();
+                }
                 setState(() {
                   context.read<TimerBloc>().add(TimerReset(getDuration()));
                 });
@@ -342,9 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 showScreen = true;
               }
               if (showScreen) {
-                context
-                    .read<TimerBloc>()
-                    .vibration([500, 1000, 500, 1000, 500, 1000]);
+                context.read<TimerBloc>().vibration([500, 1000, 500, 1000]);
                 context.read<TimerBloc>().add(TimerReset(getDuration()));
               }
             }
@@ -395,13 +403,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   SizedBox(
-                    height: MediaQuery.of(context).size.height / 15,
+                    height: MediaQuery.of(context).size.height / 20,
                   ),
                   // TimeScroll
                   state.isBreak
                       ? Padding(
                           padding: const EdgeInsets.only(
-                            bottom: 20,
+                            bottom: 10,
                           ),
                           child: Text(
                             "Break Time...",
@@ -576,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   if (state.isBreak)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 30),
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: Icon(
                         Icons.emoji_food_beverage_rounded,
                         size: MediaQuery.of(context).size.width / 5,

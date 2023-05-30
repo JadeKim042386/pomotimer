@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:isolate';
 
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_isolate/flutter_isolate.dart';
 import 'package:pomotimer/blocs/ticker.dart';
 import 'package:pomotimer/blocs/time_event.dart';
 import 'package:pomotimer/blocs/time_state.dart';
+import 'package:pomotimer/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
 
@@ -28,6 +31,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   final int initDuration;
   final service = FlutterBackgroundService();
 
+  bool init = true;
+  SendPort? isolatePort;
+  FlutterIsolate? isolate;
   StreamSubscription<int>? _tickerSubscription;
 
   @override
@@ -37,31 +43,37 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   // tick, startService (state: TimerRunInProgress)
-  void _onStarted(TimerStarted event, Emitter<TimerState> emit) {
+  void _onStarted(TimerStarted event, Emitter<TimerState> emit) async {
     emit(TimerRunInProgress(
       event.duration,
       event.isBreak,
     ));
+
     _tickerSubscription?.cancel();
+
+    if (init == true) {
+      List<dynamic> portAndIsolate =
+          await startService([event.duration, event.isBreak]);
+      isolatePort = await portAndIsolate[0];
+      isolate = portAndIsolate[1];
+      init = false;
+    } else if (isolatePort != null) {
+      isolatePort!.send([event.duration, event.isBreak]);
+    }
     _tickerSubscription = _ticker.tick(ticks: event.duration).listen(
         (duration) =>
             add(TimerTicked(duration: duration, isBreak: event.isBreak)));
-    startService();
   }
 
   // "tick tock" or "Complete"
-  void _onTicked(TimerTicked event, Emitter<TimerState> emit) {
+  void _onTicked(TimerTicked event, Emitter<TimerState> emit) async {
     if (event.duration > 0) {
       emit(TimerRunInProgress(
         event.duration,
         event.isBreak,
       ));
-      service.invoke('sendTime',
-          {'currentTime': event.duration, 'isBreak': event.isBreak});
     } else {
-      if (event.duration > 0) {
-        vibration([500, 1000, 500, 2000]);
-      }
+      vibration([500, 1000, 500, 2000]);
       emit(TimerRunInProgress(
         event.duration,
         !event.isBreak,
@@ -73,7 +85,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   void _onPaused(TimerPaused event, Emitter<TimerState> emit) {
     if (state is TimerRunInProgress) {
       _tickerSubscription?.pause();
-      serviceDispose();
+      if (isolate != null) {
+        isolate!.pause();
+      }
       emit(TimerRunPause(
         state.duration,
         state.isBreak,
@@ -82,33 +96,24 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   // tick, startService (state: TimerRunInProgress)
-  void _onResumed(TimerResumed resume, Emitter<TimerState> emit) {
+  void _onResumed(TimerResumed resume, Emitter<TimerState> emit) async {
     _tickerSubscription?.resume();
     emit(TimerRunInProgress(
       state.duration,
       state.isBreak,
     ));
-    startService();
+    if (isolate != null) {
+      isolate!.resume();
+    }
   }
 
-  void _onReset(TimerReset event, Emitter<TimerState> emit) {
+  void _onReset(TimerReset event, Emitter<TimerState> emit) async {
     _tickerSubscription?.cancel();
-    serviceDispose();
+    if (isolatePort != null) {
+      isolatePort!.send('stopService');
+      init = true;
+    }
     emit(TimerInitial(event.duration, false));
-  }
-
-  Future<void> serviceDispose() async {
-    var isServiceRunning = await service.isRunning();
-    if (isServiceRunning) {
-      service.invoke("stopService");
-    }
-  }
-
-  Future<void> startService() async {
-    var isServiceRunning = await service.isRunning();
-    if (!isServiceRunning) {
-      service.startService();
-    }
   }
 
   void vibration(List<int> pattern) async {
