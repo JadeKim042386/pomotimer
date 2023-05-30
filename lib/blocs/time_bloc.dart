@@ -25,7 +25,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     on<TimerTicked>(_onTicked);
   }
 
-  static const List<int> times = [1, 15, 20, 25, 30, 35];
+  static const List<int> times = [15, 20, 25, 30, 35];
   final Ticker _ticker;
   final SharedPreferences prefs;
   final int initDuration;
