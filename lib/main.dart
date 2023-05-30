@@ -1,18 +1,21 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_isolate/flutter_isolate.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pomotimer/apis/localstorage_variable_api.dart';
 import 'package:pomotimer/apis/models/custom_time_model.dart';
 import 'package:pomotimer/blocs/ticker.dart';
 import 'package:pomotimer/blocs/time_bloc.dart';
-import 'package:pomotimer/screens/home_screen.dart';
 import 'package:pomotimer/repositories/variable_repository.dart';
+import 'package:pomotimer/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
@@ -31,6 +34,62 @@ void main() async {
     prefs: prefs,
     variableRepository: variableRepository,
   ));
+}
+
+Future<List<dynamic>> startService(args) async {
+  Completer completer = Completer<SendPort>();
+  final mainPort = ReceivePort();
+  final isolate =
+      await FlutterIsolate.spawn(onService, [...args, mainPort.sendPort]);
+  mainPort.listen((message) {
+    if (message is SendPort) {
+      SendPort servicePort = message;
+      completer.complete(servicePort);
+    } else {
+      isolate.pause();
+    }
+  });
+  return [completer.future, isolate];
+}
+
+@pragma('vm:entry-point')
+Future<void> onService(args) async {
+  final service = FlutterBackgroundService();
+  final servicePort = ReceivePort();
+  var isServiceRunning = await service.isRunning();
+  const ticker = Ticker();
+
+  Future<void> disposeService(String message) async {
+    var isServiceRunning = await service.isRunning();
+    if (isServiceRunning) {
+      service.invoke(message);
+    }
+  }
+
+  servicePort.listen((message) async {
+    if (message == 'stopService') {
+      await disposeService(message);
+    } else if (message is List) {
+      ticker.tick(ticks: message[0]).listen((duration) => service.invoke(
+          'sendTime', {'currentTime': duration, 'isBreak': message[1]}));
+    } else if (message == 'exit') {
+      await disposeService('stopService');
+      exit(0);
+    }
+  });
+  args[2].send(servicePort.sendPort);
+
+  if (!isServiceRunning) {
+    await service.startService();
+  }
+  ticker.tick(ticks: args[0]).listen((duration) async {
+    var isServiceRunning = await service.isRunning();
+    if (isServiceRunning) {
+      service.invoke('sendTime', {'currentTime': duration, 'isBreak': args[1]});
+    } else {
+      args[2].send('pause');
+    }
+  });
 }
 
 Future<void> initializeService() async {
@@ -63,8 +122,8 @@ Future<void> initializeService() async {
       isForegroundMode: true,
 
       notificationChannelId: 'my_foreground',
-      initialNotificationTitle: 'pomotimer',
-      initialNotificationContent: 'Initializing',
+      initialNotificationTitle: 'POMOTIMER',
+      initialNotificationContent: 'Preparing',
       foregroundServiceNotificationId: 888,
     ),
     iosConfiguration: IosConfiguration(
