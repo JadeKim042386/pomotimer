@@ -24,3 +24,7 @@ The `Pomodoro` technique is a method of concentrating for a certain amount of ti
     
     3. Custom
         - pair of Break Time and Working time
+
+### Download
+
+- GooglePlayStore: [pomotimer](https://play.google.com/store/apps/details?id=com.pomotimer.jade.app)
