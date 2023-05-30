@@ -108,7 +108,10 @@ class _HomeScreenState extends State<HomeScreen> {
         currentBackPressTime = now;
         return Future.value(false);
       }
-      context.read<TimerBloc>().serviceDispose();
+      final isolatePort = context.read<TimerBloc>().isolatePort;
+      if (isolatePort != null) {
+        isolatePort.send('exit');
+      }
       return Future.value(true);
     }
 
@@ -213,6 +216,10 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             onPressed: () async {
+              final isolate = context.read<TimerBloc>().isolate;
+              if (isolate != null) {
+                isolate.pause();
+              }
               final result = await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) {
@@ -221,6 +228,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
               if (result == null && mounted) {
+                if (isolate != null) {
+                  isolate.resume();
+                }
                 setState(() {
                   context.read<TimerBloc>().add(TimerReset(getDuration()));
                 });
