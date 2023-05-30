@@ -1,16 +1,26 @@
-# pomotimer
+## POTIMER
 
-A new Flutter project.
+`POMOTIMER` is most simplified Time Management Application.
 
-## Getting Started
+### About POMOTIMER
 
-This project is a starting point for a Flutter application.
+POMOTIMER is an application that applies pomodoro technique.
 
-A few resources to get you started if this is your first Flutter project:
+The `Pomodoro` technique is a method of concentrating for a certain amount of time and taking a short break at the end of that time. I usually focus for 25 minutes and take a rest for about 5 minutes.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+![](imgs/app.png)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Settings
+    1. Round
+        - Break Time
+        - Total Round
+        \* The time per round is selected using wheel list on home
+
+    2. Time
+        - Break Time
+        - Total Round
+        - Total Working Time  
+        \* The time per round is `(Total Working Time - (Break Time * Total Round)) / Total Round`
+    
+    3. Custom
+        - pair of Break Time and Working time
