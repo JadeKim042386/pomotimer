@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:pomotimer/ad_helper.dart';
@@ -22,7 +23,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const settingTypeString = ['ROUND', 'TIME', 'COUNT'];
   FixedExtentScrollController listWheelController =
       FixedExtentScrollController();
@@ -33,10 +34,12 @@ class _HomeScreenState extends State<HomeScreen> {
   int round = 0;
   int time = 0;
   int index = 0;
+  AppLifecycleState lifecycleState = AppLifecycleState.inactive;
 
   @override
   void dispose() {
     _bannerAd?.dispose();
+    WidgetsBinding.instance.addObserver(this);
     super.dispose();
   }
 
@@ -59,6 +62,13 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     ).load();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    lifecycleState = state;
+    super.didChangeAppLifecycleState(state);
   }
 
   Future controllerInit() async {
@@ -86,22 +96,24 @@ class _HomeScreenState extends State<HomeScreen> {
     btTextController.text = ((getFromRepo('breakTime') - 3) ~/ 60).toString();
 
     void showAlertScreen(String text) async {
-      if (mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) {
-              return AlertScreen(
-                text: text,
-              );
-            },
-          ),
-        );
+      if (lifecycleState == AppLifecycleState.inactive) {
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) {
+                return AlertScreen(
+                  text: text,
+                );
+              },
+            ),
+          );
+        }
+        await Future.delayed(const Duration(seconds: 3));
+        if (mounted) Navigator.of(context).pop();
       }
-      await Future.delayed(const Duration(seconds: 3));
-      if (mounted) Navigator.of(context).pop();
     }
 
-    Future<bool> onWillPop() {
+    Future<bool> onWillPop() async {
       DateTime now = DateTime.now();
       if (currentBackPressTime == null ||
           now.difference(currentBackPressTime!) > const Duration(seconds: 2)) {
@@ -111,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final isolatePort = context.read<TimerBloc>().isolatePort;
       if (isolatePort != null) {
         isolatePort.send('exit');
+        await SystemNavigator.pop();
       }
       return Future.value(true);
     }
