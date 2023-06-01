@@ -1,5 +1,5 @@
 import 'package:pomotimer/apis/models/custom_time_model.dart';
-import 'package:pomotimer/apis/variable_api.dart';
+import 'package:pomotimer/apis/variable_interface.dart';
 
 class VariableRepository {
   final VariableApi _variableApi;

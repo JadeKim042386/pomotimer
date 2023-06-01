@@ -9,7 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_isolate/flutter_isolate.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pomotimer/apis/localstorage_variable_api.dart';
+import 'package:pomotimer/apis/variable_db.dart';
 import 'package:pomotimer/apis/models/custom_time_model.dart';
 import 'package:pomotimer/blocs/ticker.dart';
 import 'package:pomotimer/blocs/time_bloc.dart';
