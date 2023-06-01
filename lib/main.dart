@@ -26,8 +26,7 @@ void main() async {
   });
   await initializeService();
   final prefs = await SharedPreferences.getInstance();
-  final variableApi =
-      LocalStorageVariableApi(plugin: await SharedPreferences.getInstance());
+  final variableApi = LocalStorageVariableApi(plugin: prefs);
   final variableRepository = VariableRepository(variableApi: variableApi);
   runApp(PomoTimer(
     prefs: prefs,
