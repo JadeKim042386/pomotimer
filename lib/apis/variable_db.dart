@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:pomotimer/apis/models/custom_time_model.dart';
-import 'package:pomotimer/apis/variable_api.dart';
+import 'package:pomotimer/apis/variable_interface.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
